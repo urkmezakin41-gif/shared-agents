@@ -1,0 +1,3 @@
+# Taramaların ham çıktısı: üçüncü taraf verisi/HTML/JS içerebilir, repoya
+# commitlenmez. Yalnızca analiz edilmiş rapor (reports/RAPOR_*.md) commitlenir.
+scripts/bugbounty/out/
