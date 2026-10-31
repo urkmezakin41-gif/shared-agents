@@ -146,3 +146,11 @@ amaçlı işaretli) fixture verisiyle test edildi:
 Resmi bir platforma gerçek gönderim **test edilmedi ve edilmeyecek** —
 böyle bir testin kendisi gerçek, geri alınamaz bir rapor dosyalaması
 anlamına gelirdi.
+
+**Canlı Telegram teslimatı doğrulandı** (2026-10-31): `TELEGRAM_BOT_TOKEN`/
+`TELEGRAM_CHAT_ID` eklendikten sonra uçtan uca bir test çalıştırıldı
+(`incoming/` → `ingest.py` → sentetik stage1/stage2 → `dispatch.py
+--notify`); Telegram API `"ok":true` döndü ve rapor dosyası botun
+bağlı olduğu sohbete belge olarak düştü. Test verisi/çıktısı (sentetik
+bulgu, test raporu) doğrulama sonrası repodan temizlendi, yalnızca bu
+not kaldı.
