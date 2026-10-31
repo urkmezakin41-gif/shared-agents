@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
-scripts/bugbounty/ingest.py — pipeline tetikleyici adım, 2 kanal.
+scripts/bugbounty/ingest.py — pipeline tetikleyici adım.
 
-Zamanlanmış görev tarafından periyodik olarak çalıştırılır. İki kanalı
-kontrol eder:
-  A) incoming/*.json  — git push ile bırakılan ham veri dosyaları
-  B) Telegram getUpdates — TELEGRAM_BOT_TOKEN varsa, bota gönderilen
-     belgeler (aynı JSON şemasıyla)
+Zamanlanmış görev tarafından periyodik olarak çalıştırılır. Tek giriş
+kanalı: incoming/*.json — git push ile bırakılan ham veri dosyaları.
 
-Her ikisi için de ZORUNLU alan: "scope_declaration" (boş/çok kısa olamaz).
-Yoksa dosya/mesaj REJECTED olarak işaretlenir, analiz edilmez, veri
-icat edilmez.
+NOT: Telegram inbound (getUpdates) kasıtlı olarak KULLANILMIYOR. Sebep:
+getUpdates tek tüketicili bir API — aynı bot token'ını A14 tarafı da
+dinlerse (kendi toplayıcı/hakem akışı için) mesajları birbirinin elinden
+kapar. Bu yüzden veri girişi yalnızca incoming/ (git push) üzerinden;
+Telegram bu pipeline'da yalnızca ÇIKIŞ (dispatch.py --notify ile
+sendDocument, tek yönlü, getUpdates'e dokunmaz) için kullanılıyor.
+
+ZORUNLU alan: "scope_declaration" (boş/çok kısa olamaz). Yoksa dosya
+REJECTED olarak işaretlenir, analiz edilmez, veri icat edilmez.
 
 Geçerli her öğe için scripts/bugbounty/out/<target>/raw/ altına ham
 veriyi yazar ve stdout'a bir JSON manifest basar:
@@ -24,17 +27,12 @@ için ayrı ayrı yürütür (bkz. scripts/bugbounty/PIPELINE.md).
 """
 import argparse
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
 INCOMING_DIR = REPO_ROOT / "incoming"
 PROCESSED_DIR = INCOMING_DIR / "processed"
-STATE_DIR = SCRIPT_DIR / ".state"
-TELEGRAM_OFFSET_FILE = STATE_DIR / "telegram_offset.txt"
 MIN_SCOPE_LEN = 5
 
 
@@ -97,79 +95,15 @@ def process_incoming_folder() -> tuple[list[str], list[dict]]:
     return pending, rejected
 
 
-def process_telegram() -> tuple[list[str], list[dict]]:
-    pending, rejected = [], []
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    if not token:
-        return pending, rejected
-
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    last_offset = 0
-    if TELEGRAM_OFFSET_FILE.exists():
-        try:
-            last_offset = int(TELEGRAM_OFFSET_FILE.read_text().strip() or "0")
-        except ValueError:
-            last_offset = 0
-
-    try:
-        result = subprocess.run(
-            ["curl", "-sS", "-m", "20",
-             f"https://api.telegram.org/bot{token}/getUpdates?offset={last_offset + 1}&timeout=0"],
-            capture_output=True, text=True, timeout=25,
-        )
-        updates = json.loads(result.stdout).get("result", [])
-    except Exception as e:
-        print(f"[ingest] Telegram getUpdates başarısız: {e}", file=sys.stderr)
-        return pending, rejected
-
-    max_update_id = last_offset
-    for upd in updates:
-        max_update_id = max(max_update_id, upd.get("update_id", 0))
-        msg = upd.get("message") or {}
-        doc = msg.get("document")
-        if not doc:
-            continue  # yalnızca belge (JSON dosyası) ekli mesajları işliyoruz
-        file_id = doc.get("file_id")
-        source_label = f"telegram/{upd.get('update_id')}"
-        try:
-            gf = subprocess.run(
-                ["curl", "-sS", "-m", "20",
-                 f"https://api.telegram.org/bot{token}/getFile?file_id={file_id}"],
-                capture_output=True, text=True, timeout=25,
-            )
-            file_path = json.loads(gf.stdout)["result"]["file_path"]
-            dl = subprocess.run(
-                ["curl", "-sS", "-m", "20",
-                 f"https://api.telegram.org/file/bot{token}/{file_path}"],
-                capture_output=True, text=True, timeout=25,
-            )
-            payload = json.loads(dl.stdout)
-        except Exception as e:
-            rejected.append({"source": source_label, "reason": f"indirme/parse hatası: {e}"})
-            continue
-
-        ok, result = validate_and_stage(payload, source_label)
-        if ok:
-            pending.append(result)
-        else:
-            rejected.append({"source": source_label, "reason": result})
-
-    if max_update_id > last_offset:
-        TELEGRAM_OFFSET_FILE.write_text(str(max_update_id), encoding="utf-8")
-
-    return pending, rejected
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.parse_args()
 
-    p1, r1 = process_incoming_folder()
-    p2, r2 = process_telegram()
+    pending, rejected = process_incoming_folder()
 
     manifest = {
-        "pending_targets": sorted(set(p1 + p2)),
-        "rejected": r1 + r2,
+        "pending_targets": sorted(set(pending)),
+        "rejected": rejected,
     }
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 

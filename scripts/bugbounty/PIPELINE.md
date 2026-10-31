@@ -1,21 +1,22 @@
 # 3 Aşamalı Bug Bounty Pipeline
 
 ```
-[Tetikleyici — 2 kanal]            [Ingest]        [Stage 1]            [Stage 2]              [Stage 3]
+[Tetikleyici]                       [Ingest]        [Stage 1]            [Stage 2]              [Stage 3]
 A) scan.sh --target X --scope  ──┐
-B) incoming/*.json (git push)  ──┼─▶ ingest.py ─▶ recon-and-auditor ─▶ skeptical-triager ─▶ dispatch.py
-C) Telegram'a belge gönderimi  ──┘   (scope          (ajan, JSON           (ajan,              (deterministik
+B) incoming/*.json (git push)  ──┴─▶ ingest.py ─▶ recon-and-auditor ─▶ skeptical-triager ─▶ dispatch.py
+                                      (scope          (ajan, JSON           (ajan,              (deterministik
                                        doğrulama)      taslak)              confidence)          script)
                                                                                                       │
                                                                                         reports/RAPOR_X.md
                                                                                         (+ opsiyonel Telegram
-                                                                                         bildirimi, --notify)
+                                                                                         bildirimi, --notify,
+                                                                                         yalnızca ÇIKIŞ)
 ```
 
 ## Tetikleme modeli
 
-Bu pipeline **kendi kendine hedef seçip taramaz**. Üç giriş kanalı var,
-hepsi veri içinde **zorunlu bir `scope_declaration` alanı** taşımak
+Bu pipeline **kendi kendine hedef seçip taramaz**. İki giriş kanalı var,
+ikisi de veri içinde **zorunlu bir `scope_declaration` alanı** taşımak
 zorunda — yoksa veri reddedilir, analiz edilmez:
 
 * **A) Manuel (`scan.sh`):** İnsan, belirli bir hedef için
@@ -25,14 +26,18 @@ zorunda — yoksa veri reddedilir, analiz edilmez:
   üzerinde çalışan bir araç) `incoming/<ad>.json`'ı şemaya uygun olarak
   (bkz. `incoming/README.md`) repoya push eder. Zamanlanmış görev
   `ingest.py`'yi çalıştırıp bunu alır.
-* **C) Telegram botuna belge gönderme:** `TELEGRAM_BOT_TOKEN` varsa, aynı
-  JSON şeması bir dosya olarak doğrudan bota gönderilebilir; zamanlanmış
-  görev `getUpdates` ile periyodik kontrol eder.
 
-Hangi kanaldan gelirse gelsin, `ingest.py`:
+Telegram **giriş kanalı değildir** — yalnızca çıkışta (`dispatch.py
+--notify`, tek yönlü `sendDocument`) kullanılır. Sebep: `getUpdates` tek
+tüketicili bir API; aynı bot token'ını başka bir taraf (örn. A14'ün
+kendi toplayıcı/hakem akışı) da dinlerse mesajları birbirinin elinden
+kapar — bu yüzden bu çakışmayı önlemek için Telegram inbound polling
+pipeline'dan tamamen çıkarıldı, veri girişi yalnızca `incoming/`
+üzerinden.
+
+`ingest.py`:
 1. `scope_declaration` yoksa/çok kısaysa → **reddeder**, hiçbir analiz
-   başlamaz, `incoming/processed/REJECTED_*` olarak işaretlenir (veya
-   Telegram ise sessizce reddedilenler listesine eklenir).
+   başlamaz, `incoming/processed/REJECTED_*` olarak işaretlenir.
 2. Geçerliyse → ham veriyi `scripts/bugbounty/out/<hedef>/raw/`'a yazar
    ve `pending_targets` listesine ekler.
 
@@ -45,9 +50,9 @@ Ardından (ister insan "`çalıştır`" dediği an, ister zamanlanmış görev
   verdict == PASS** olanları `reports/RAPOR_<hedef>.md`'ye yazar.
 
 Zamanlanmış görev tetiklediğinde, sonuç (`reports/RAPOR_*.md`,
-`incoming/processed/*`, `.state/telegram_offset.txt`) bu çalışan
-branch'e **otomatik commit+push** edilir, böylece siz canlı bir
-sohbette olmasanız bile sonuç GitHub'da/PR'da görünür.
+`incoming/processed/*`) bu çalışan branch'e **otomatik commit+push**
+edilir, böylece siz canlı bir sohbette olmasanız bile sonuç GitHub'da/
+PR'da görünür.
 
 ## Elimde olan / olmayan / yapmayacağım (netlik için)
 
@@ -55,7 +60,8 @@ sohbette olmasanız bile sonuç GitHub'da/PR'da görünür.
 |---|---|
 | Zamanlanmış (cron) görev oluşturmak | ✅ Elimde var, kuruldu |
 | Ortamdaki bir API key/token'ı (Telegram, GitHub) kullanmak | ✅ Elimde var |
-| Telegram `getUpdates` ile periyodik mesaj/dosya çekmek | ✅ Elimde var, kuruldu |
+| Telegram'a bildirim göndermek (`sendDocument`, tek yönlü) | ✅ Elimde var, kuruldu |
+| Telegram `getUpdates` ile periyodik mesaj çekmek | ⚠️ Teknik olarak elimde var ama **kasıtlı olarak kullanmıyorum** — tek tüketicili API, A14'ün kendi akışıyla çakışır |
 | Herkesin POST atabileceği genel bir webhook URL'i oluşturmak | ❌ Aracım yok (`watch_url` yalnızca Anthropic'in Artifact sistemine özel) |
 | HackerOne/GitHub PVR API'sine otomatik rapor gönderimi | 🚫 Bilinçli olarak yapmıyorum (bkz. aşağıdaki bölüm) — araç olsa bile |
 | Scope beyanı olmayan veriyi analiz etmek | 🚫 Bilinçli olarak yapmıyorum |
@@ -97,8 +103,6 @@ Env değişkenleri yoksa adım sessizce atlanır, hata vermez.
 incoming/<ad>.json              # Kanal B: bot tarafından push edilen ham veri (işlenince processed/'a taşınır)
 incoming/processed/             # işlenmiş (OK_*/REJECTED_*) dosyalar — repoda kalır, denetim izi
 
-scripts/bugbounty/.state/telegram_offset.txt   # Kanal C'nin son işlenen update_id'si (repoda kalır, kaldığı yerden devam eder)
-
 scripts/bugbounty/out/<hedef>/
 ├── raw/                      # scan.sh VEYA ingest.py çıktısı (ham veri, repoya commitlenmez)
 ├── stage1_findings.json      # Stage 1 çıktısı
@@ -108,10 +112,8 @@ reports/RAPOR_<hedef>.md      # Stage 3 çıktısı — tek commitlenen nihai so
 ```
 
 `scripts/bugbounty/out/` tamamen `.gitignore`'da (ham/ara veri); geri
-kalan her şey (`incoming/processed/`, `.state/`, `reports/RAPOR_*.md`)
-bilinçli olarak repoda tutuluyor — hem denetim izi hem de zamanlanmış
-görevin "neyi zaten işledim" bilgisini container'lar arası hatırlaması
-için.
+kalan her şey (`incoming/processed/`, `reports/RAPOR_*.md`) bilinçli
+olarak repoda tutuluyor — denetim izi için.
 
 ## Zamanlanmış görev
 
@@ -119,8 +121,8 @@ için.
 için) çalışan bir görev kuruldu. Her çalıştığında:
 1. `python3 scripts/bugbounty/ingest.py` çalıştırılır → `pending_targets` listesi alınır.
 2. Her `pending_target` için recon-and-auditor → skeptical-triager → `dispatch.py --notify` sırayla yürütülür.
-3. Değişen her şey (`reports/`, `incoming/processed/`, `.state/`) bu
-   branch'e commit+push edilir.
+3. Değişen her şey (`reports/`, `incoming/processed/`) bu branch'e
+   commit+push edilir.
 4. Yeni bir şey yoksa (`pending_targets` boş, `rejected` boş) hiçbir
    commit yapılmaz, sessizce biter.
 
@@ -140,7 +142,6 @@ amaçlı işaretli) fixture verisiyle test edildi:
   `incoming/processed/OK_*` olarak işaretlendi.
 * `scope_declaration` boş olan dosya → reddedildi, hiçbir analiz
   başlamadı, `incoming/processed/REJECTED_*` olarak işaretlendi.
-* `TELEGRAM_BOT_TOKEN` yokken Kanal C sessizce atlandı (hata vermedi).
 
 Resmi bir platforma gerçek gönderim **test edilmedi ve edilmeyecek** —
 böyle bir testin kendisi gerçek, geri alınamaz bir rapor dosyalaması

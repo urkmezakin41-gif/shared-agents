@@ -34,10 +34,12 @@ Dosya adı: `<herhangi_bir_isim>.json` (çakışmayı önlemek için zaman damga
 * İşlenen dosyalar `incoming/processed/` altına taşınır (başarıyla
   işlendiyse `OK_` öneki, reddedildiyse `REJECTED_<sebep>_` öneki ile).
 
-## Alternatif kanal: Telegram
+## Telegram neden giriş kanalı DEĞİL
 
-`TELEGRAM_BOT_TOKEN` ortam değişkeni ayarlıysa, aynı JSON şemasını bir
-belge (document) olarak doğrudan o Telegram botuna gönderebilirsiniz;
-`ingest.py` periyodik olarak `getUpdates` ile kontrol edip indirir ve
-aynı şekilde işler. `incoming/` klasörüne push etmekle işlevsel olarak
-aynıdır, sadece teslim kanalı farklıdır.
+Veri girişi için **yalnızca bu klasör** kullanılır — Telegram
+`getUpdates` kasıtlı olarak kullanılmıyor. Sebep: `getUpdates` tek
+tüketicili bir API; aynı bot token'ı başka bir taraf (örn. A14'ün kendi
+toplayıcı/hakem akışı) da dinlerse mesajlar birbirinin elinden kapılır.
+Telegram bu pipeline'da yalnızca **çıkış** için var: `dispatch.py
+--notify`, üretilen raporu `sendDocument` ile (tek yönlü, `getUpdates`'e
+dokunmadan) gözden geçirmeniz için gönderir.
