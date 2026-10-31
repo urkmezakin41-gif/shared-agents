@@ -217,8 +217,10 @@ def main():
     print(f"[dispatch] Yazıldı: {report_path}")
     print(f"[dispatch] Eşiği geçen bulgu: {len(passed)} / Toplam aday: {len(findings)}")
 
-    if args.notify:
+    if args.notify and len(passed) > 0:
         send_telegram(report_path, args.target, len(passed))
+    elif args.notify:
+        print('[dispatch] Bulgu yok ([TEMIZ - GEC]), Telegram bildirimi atlandi (sadece gercek bulgularda bildirim gider).')
 
     print(
         "[dispatch] NOT: Hiçbir bulgu GitHub PVR / HackerOne API'sine otomatik "
