@@ -65,6 +65,19 @@ def render_report(target: str, stage1: dict, passed: list[dict], rejected: list[
         lines.append("### Ödül Dışı Olarak Atlanan Konular")
         for note in skipped_no_reward:
             lines.append(f"* [ÖDÜL DEĞERİ YOK - ATLANDI] {note}")
+
+    analyst_notes = stage1.get("analyst_notes_tr") or []
+    if analyst_notes:
+        lines.append("")
+        lines.append("### 📓 Analist Notları (bulgu değil, ama kayda değer)")
+        lines.append(
+            "_Bu gözlemler Stage 2'nin ≥90 eşiğine hiç girmedi — somut kanıt "
+            "eksikliği nedeniyle bilinçli olarak bulgu olarak sunulmadı. Şeffaflık "
+            "için burada tutuluyor; bir sonraki veri çekiminde ek kaynak kodla "
+            "yeniden değerlendirilebilir._"
+        )
+        for note in analyst_notes:
+            lines.append(f"* {note}")
     lines.append("")
 
     if not passed:

@@ -74,7 +74,9 @@ def process_incoming_folder() -> tuple[list[str], list[dict]]:
 
     for f in sorted(INCOMING_DIR.glob("*.json")):
         try:
-            payload = json.loads(f.read_text(encoding="utf-8"))
+            # utf-8-sig: bazı araçlar/botlar BOM'lu UTF-8 yazıyor; bu kodlama
+            # BOM'u varsa sessizce yutar, yoksa normal utf-8 gibi davranır.
+            payload = json.loads(f.read_text(encoding="utf-8-sig"))
         except Exception as e:
             dest = PROCESSED_DIR / f"REJECTED_parse_error_{f.name}"
             f.rename(dest)

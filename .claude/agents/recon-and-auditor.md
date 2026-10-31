@@ -132,6 +132,9 @@ olarak aşağıdaki şemada bir JSON dosyası yaz:
   "scope_declaration": "<kullanıcının verdiği scope açıklaması, aynen>",
   "raw_data_dir": "scripts/bugbounty/out/<hedef>/raw",
   "blocked_or_unreachable_steps": ["<varsa, _scan.log'dan>"],
+  "analyst_notes_tr": [
+    "<somut kanıtı yetersiz olduğu için findings'e EKLEMEDİĞİN ama şeffaflık için kaydetmeye değer gözlemler — ör. 'X kontrolü eksik GİBİ görünüyor ama onu doğrulayacak kütüphane kodu sağlanmadı, bir sonraki veri çekiminde Y dosyası da istenmeli'. Bu alan rapora 'Analist Notları' bölümü olarak düşer, bulgu olarak DEĞİL.>"
+  ],
   "findings": [
     {
       "id": "F1",
