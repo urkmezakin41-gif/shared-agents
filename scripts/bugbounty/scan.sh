@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # scripts/bugbounty/scan.sh
 #
-# Manuel, tek seferlik, PASİF keşif script'i. Bug bounty / AppSec denetimi
-# için ham veri toplar; analiz ve nihai rapor kararını bug-bounty-auditor
-# agent'ı (insan tarafından, bu ham veriye bakarak) verir.
+# Manuel, tek seferlik, PASİF keşif script'i (pipeline'ın tetikleyici
+# adımı — bkz. scripts/bugbounty/PIPELINE.md). Bug bounty / AppSec
+# denetimi için ham veri toplar; analiz ve triyaj kararını
+# recon-and-auditor (Stage 1) + skeptical-triager (Stage 2) agent'ları,
+# nihai rapor dosyasını dispatch.py (Stage 3) üretir.
 #
 # Bu script:
 #   - Otomatik/periyodik ÇALIŞMAZ. Her çalıştırma elle tetiklenir.
