@@ -163,8 +163,7 @@ Kurallar:
   veride karşılığı olmayan hiçbir iddia yazma.
 * Bulgu yoksa `findings: []` yaz — boş liste de geçerli ve beklenen bir
   sonuçtur, bulgu icat etme.
-* `hackerone_draft_en` alanını yalnızca `severity_estimate` `High` veya
-  `Critical` ise doldur; aksi halde `null` bırak.
+* `hackerone_draft_en` alanını `reward_eligible: true` olan HER aday bulgu (`Critical`, `High`, `Medium` ve kapsam dahilindeki `Low`) için eksiksiz doldur; asla `null` bırakma.
 * Bu dosyayı yazdıktan sonra kendi kendine Stage 2'yi veya Stage 3'ü
   **çağırma**; bu adımları orkestre eden sensin değil, seni çağıran
   (kullanıcı veya ana oturum).

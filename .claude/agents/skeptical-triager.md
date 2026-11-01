@@ -43,16 +43,14 @@ Her `findings[]` elemanı için:
 4. **Scope içinde mi?** `stage1_findings.json.scope_declaration` ile
    bulgunun konumu uyuşmuyorsa (başka bir domain/repo/varlık) → REJECT,
    `reason: "scope dışı"`.
-5. **Kanıt gerçekten iddiayı destekliyor mu?** Örn. bir JS dosyasında
-   `/admin` string'i geçmesi tek başına BFLA kanıtı değildir;
-   yetkilendirme kontrolünün **eksik olduğuna dair somut bir gösterge**
-   (ör. kod yorumunda TODO, istemci tarafı role check, eksik middleware)
-   olmalı. Zayıfsa confidence'ı düşür (örn. 30-60 aralığı), REJECT etme
-   ama 90 eşiğinin altında bırak.
-6. Yalnızca yukarıdaki 5 kontrolü geçen, ham kanıtla doğrudan desteklenen
-   bulgulara **confidence ≥ 85** ver; gerçekten şüphe duymadığın,
-   production etkisi net olanlara 90-100 aralığı ayrılmalı (Stage 3
-   yalnızca ≥90 olanları rapora dönüştürecek).
+5. **Gönderim Kararı Tamamen Sana (Claude) Aittir (`verdict: PASS` vs `REJECT`):**
+   Yapay bir sayısal eşik (90 barajı) artık bulguları elemek için kullanılmıyor.
+   Eğer bulgunun kod kanıtı gerçekse, yamalanmamışsa ve program kapsamında
+   ödül değeri taşıyorsa (`Critical`, `High` veya `Medium`), doğrudan
+   `verdict: "PASS"` ver (`verdict: "PASS"` verdiğin her bulgu rapora dahil edilir ve
+   kullanıcıya/HackerOne kuyruğuna iletilir).
+6. Eğer bulgu yanlış pozitifse, yamalıysa, tamamen teorikse veya gönderilmemesi
+   gerekiyorsa `verdict: "REJECT"` ver.
 
 ## Çıktı Formatı (ZORUNLU JSON)
 
@@ -83,8 +81,6 @@ Her `findings[]` elemanı için:
 Kurallar:
 * `stage1_findings.json`'daki **her** `id` için burada bir karşılık
   olmalı (hiçbiri atlanmaz).
-* `verdict: "PASS"` ama `confidence < 90` olabilir (zayıf ama tamamen
-  reddedilmeyen bulgu) — nihai gönderim kararını Stage 3 verir, sen
-  sadece skoru ver.
+* Gönderilip gönderilmeyeceğine tamamen SEN karar verirsin: Gönderilmeye değer gördüğün her gerçek bulguya `verdict: "PASS"`, gönderilmemesi gerekenlere `verdict: "REJECT"` ver. Stage 3 (`dispatch.py`) senin `PASS` dediğin tüm bulguları sayısal baraja takmadan doğrudan yayınlar.
 * Bu dosyayı yazdıktan sonra Stage 3'ü kendin tetikleme veya
   `scripts/bugbounty/dispatch.py`'yi çalıştırma; o, seni çağıranın işi.

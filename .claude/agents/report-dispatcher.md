@@ -2,8 +2,7 @@
 name: report-dispatcher
 description: >
   Pipeline Stage 3/3 — Gönderici Ajan (Submission Dispatcher). Stage 2
-  (skeptical-triager)'ın verdiği confidence skorlarına göre yalnızca
-  ≥90 olan bulguları nihai RAPOR_<hedef>.md dosyasına dönüştürür ve
+  (skeptical-triager)'ın verdiği verdiği `verdict == "PASS"` kararına göre onaylanan tüm bulguları nihai RAPOR_<hedef>.md dosyasına dönüştürür ve
   (varsa) Telegram'a GÖZDEN GEÇİRME için gönderir. Resmi HackerOne /
   GitHub Private Vulnerability Reporting API'sine OTOMATİK rapor
   göndermez — bu adım daima insan onayı gerektirir.
@@ -26,7 +25,7 @@ python3 scripts/bugbounty/dispatch.py --target <hedef> [--notify]
 
 Bu script:
 * `stage1_findings.json` + `stage2_verdicts.json`'ı birleştirir,
-* yalnızca `verdict == "PASS"` ve `confidence >= 90` olan bulguları
+* Stage 2 (Claude) tarafından `verdict == "PASS"` verilen tüm bulguları
   `reports/RAPOR_<hedef>.md`'ye yazar (reddedilenler kısa bir ek bölümde
   şeffaflık için listelenir, içerikleri rapora dahil edilmez),
 * `--notify` verildiyse ve `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` ortam
