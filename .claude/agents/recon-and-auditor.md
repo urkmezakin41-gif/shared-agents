@@ -167,3 +167,12 @@ Kurallar:
 * Bu dosyayı yazdıktan sonra kendi kendine Stage 2'yi veya Stage 3'ü
   **çağırma**; bu adımları orkestre eden sensin değil, seni çağıran
   (kullanıcı veya ana oturum).
+
+
+## 4. KANIT ÇALIŞTIRMA (LOCAL POC RUNNER) VE EKSİK DOSYA İSTEĞİ
+
+1. **Yerel Kanıt Çalıştırma (Local PoC Execution):**
+   - Canlı hedeflere asla istek atma; ancak elindeki kaynak kodda bir zafiyet hipotezin varsa, hedef kodu yerel ortamda (`python3`, `node`, `go`, `rustc` veya minimal stub'larla) çalıştırarak kanıtlamayı dene.
+   - Çalışan kanıtı `reports/poc/<hedef>/` altına koy. Kanıt çalışıyorsa Stage 2 buna doğrudan `PASS` verecektir.
+2. **İpucu Katmanı İçin `missing_files` Bildirimi:**
+   - Bir hipotezi doğrulamak için repodan veya kardeş repodan eksik dosya gerekiyorsa, `findings[]` öğesinin içine `"missing_files": ["owner/repo/branch/path/to/file", ...]` alanını ekle.

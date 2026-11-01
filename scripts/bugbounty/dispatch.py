@@ -125,7 +125,8 @@ def render_report(target: str, stage1: dict, passed: list[dict], rejected: list[
         lines.append("|---|---|---|---|")
         for f in rejected:
             v = f["_verdict"]
-            lines.append(f"| {f['id']} | {v['confidence']} | {v['verdict']} | {v.get('reason', '')} |")
+            mfiles_str = ", ".join((v.get("missing_files") or f.get("missing_files") or [])[:5])
+            lines.append(f"| {f['id']} | {v['confidence']} | {v['verdict']} | {v.get('reason', '')} | {mfiles_str} |")
         lines.append("")
 
     lines.append("---")
@@ -165,6 +166,35 @@ def send_telegram(report_path: Path, target: str, passed_count: int) -> None:
             print(result.stderr, file=sys.stderr)
     except Exception as e:
         print(f"[dispatch] Telegram gönderimi başarısız: {e}", file=sys.stderr)
+
+
+def send_telegram_hints(target: str, hints: list[dict]) -> None:
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        return
+    lines = [f"💡 [İPUCU KATMANI — {target}]", "Hipotez var ama kanıt/dosya eksik (HackerOne'a gönderilmedi):"]
+    for f in hints:
+        v = f.get("_verdict", {})
+        conf = v.get("confidence", 0)
+        title = f.get("title", f.get("id", "?"))
+        reason = v.get("hint_tr") or v.get("reason", "")
+        mfiles = v.get("missing_files") or f.get("missing_files") or []
+        lines.append(f"• {f.get('id')} (Güven {conf}): {title} — {reason}")
+        if mfiles:
+            lines.append(f"  📂 Eksik Dosya: {', '.join(mfiles[:5])}")
+    text = "\n".join(lines)[:3900]
+    cmd = [
+        "curl", "-sS", "-m", "20",
+        "-X", "POST",
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        "-d", f"chat_id={chat_id}",
+        "--data-urlencode", f"text={text}",
+    ]
+    try:
+        subprocess.run(cmd, capture_output=True, text=True, timeout=25)
+    except Exception:
+        pass
 
 
 def main():
@@ -217,10 +247,18 @@ def main():
     print(f"[dispatch] Yazıldı: {report_path}")
     print(f"[dispatch] Eşiği geçen bulgu: {len(passed)} / Toplam aday: {len(findings)}")
 
+    hints = [
+        f for f in rejected
+        if f.get("_verdict", {}).get("confidence", 0) >= 15
+        or f.get("_verdict", {}).get("missing_files")
+        or f.get("missing_files")
+    ]
     if args.notify and len(passed) > 0:
         send_telegram(report_path, args.target, len(passed))
+    elif args.notify and len(hints) > 0:
+        send_telegram_hints(args.target, hints)
     elif args.notify:
-        print('[dispatch] Bulgu yok ([TEMIZ - GEC]), Telegram bildirimi atlandi (sadece gercek bulgularda bildirim gider).')
+        print('[dispatch] Bulgu veya ipucu yok ([TEMIZ - GEC]), Telegram bildirimi atlandi.')
 
     print(
         "[dispatch] NOT: Hiçbir bulgu GitHub PVR / HackerOne API'sine otomatik "

@@ -7,7 +7,7 @@ description: >
   çalışır; yalnızca ham kanıtla doğrulanabilen, ödül-değeri taşıyan
   bulgulara 0-100 arası confidence skoru verir, gerisini reddeder.
   Kendi başına yeni veri toplamaz, yeni tarama başlatmaz.
-tools: Read, Grep, Glob, Write
+tools: Read, Grep, Glob, Bash, Write
 model: inherit
 ---
 
@@ -84,3 +84,15 @@ Kurallar:
 * Gönderilip gönderilmeyeceğine tamamen SEN karar verirsin: Gönderilmeye değer gördüğün her gerçek bulguya `verdict: "PASS"`, gönderilmemesi gerekenlere `verdict: "REJECT"` ver. Stage 3 (`dispatch.py`) senin `PASS` dediğin tüm bulguları sayısal baraja takmadan doğrudan yayınlar.
 * Bu dosyayı yazdıktan sonra Stage 3'ü kendin tetikleme veya
   `scripts/bugbounty/dispatch.py`'yi çalıştırma; o, seni çağıranın işi.
+
+
+## Kanıt Çalıştırma (Local Proof Runner) ve İpucu Katmanı
+
+1. **Kanıt Çalıştırarak Doğrulama (Çalışırsa = PASS):**
+   - Bir aday bulguyu "statik okudum, kanıtlanamadı" diyerek doğrudan elemek yerine, eğer yerel ortamda (`python3`, `node`/`npx tsx`, `go test`/`go run`, `rustc`, `gcc`) gerçek kaynak dosyalarını (veya fonksiyonu izole edip dış bağımlılıkları minimal stub ile değiştirerek, tıpkı `chainlink-ea-error-key-leak/repro.ts` örneğindeki gibi) çalıştırıp hatayı/etkiyi yeniden üretebiliyorsan **MUTLAKA çalıştır**.
+   - **Kanıt kodu çalışır ve açığı doğrularsa (`reproduced`)**, bulguya `verdict: "PASS"` ver ve çalışan PoC betiğini `reports/poc/<hedef>/` altına kaydet!
+2. **İpucu Katmanı (`verdict: "REJECT"`, `confidence: 15-70` + `missing_files`):**
+   - Eğer somut bir kod ipucu/hipotez varsa ama kanıtı çalıştırmak için başka bir dosya veya kardeş repo eksikse, `verdicts[]` içindeki öğeye şu iki alanı ekle:
+     - `"hint_tr"`: Tek cümlelik net hipotez özeti (Telegram İpucu Katmanı mesajında gösterilecek),
+     - `"missing_files"`: Kanıtı çalıştırmak için gereken tam GitHub dosya yolları listesi (ör. `["brave-intl/bat-go/master/libs/wallet/wallet.go", "brave-intl/challenge-bypass-server/master/server/tokens.go"]`).
+   - Samsung A14 botu ve `dispatch.py` bu `missing_files` listesini okuyup hem Telegram'a tek mesajlık **💡 İpucu Özeti** atacak hem de eksik dosyaları otomatik çekip sana geri gönderecektir.
