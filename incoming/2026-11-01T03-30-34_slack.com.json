@@ -1,0 +1,48 @@
+{
+  "target": "slack.com",
+  "scope_declaration": "Authorized Public Bug Bounty Program (HackerOne / Immunefi) passive recon scope for slack.com",
+  "raw": {
+    "crtsh_subdomains": [
+      "dev1101.slack.com",
+      "dev1380.slack.com",
+      "dev11.slack.com",
+      "dev1262.slack.com",
+      "dev2027.slack.com",
+      "dev2430.slack.com",
+      "dev1926.slack.com",
+      "dev2161.slack.com",
+      "dev2421.slack.com",
+      "dev1431.slack.com",
+      "dev1040.slack.com",
+      "dev1477.slack.com",
+      "dev1385.slack.com",
+      "dev2369.slack.com",
+      "enterprise.staging.slack.com"
+    ],
+    "cname_records": {
+      "dev1101.slack.com": "uberproxy-prod.slack-sec.com.",
+      "dev1380.slack.com": "uberproxy-prod.slack-sec.com.",
+      "dev11.slack.com": "uberproxy-prod.slack-sec.com.",
+      "dev1262.slack.com": "uberproxy-prod.slack-sec.com.",
+      "dev2027.slack.com": "uberproxy-prod.slack-sec.com.",
+      "dev2430.slack.com": "uberproxy-prod.slack-sec.com.",
+      "dev1926.slack.com": "uberproxy-prod.slack-sec.com.",
+      "dev2161.slack.com": "uberproxy-prod.slack-sec.com."
+    },
+    "js_endpoints": [
+      {
+        "source_url": "https://a.slack-edge.com/bv1-13/manifest.243928ba447f1bc8.marketing.min.js",
+        "matches": [
+          "/api"
+        ]
+      },
+      {
+        "source_url": "https://cdn.cookielaw.org/scripttemplates/otSDKStub.js",
+        "matches": [
+          "/api"
+        ]
+      }
+    ],
+    "homepage_html_excerpt": "<!DOCTYPE html><html lang=\"en-US\" class=\"\" data-cdn=\"https://a.slack-edge.com/\"><head><link rel=\"preconnect\" href=\"https://d34u8crftukxnk.cloudfront.net\"><script type=\"text/human\">\n/*\n\n          ++++      :::::                                   LLLLL                                          KKKKK\n         ++++++    :::::::                                  LLLLL                                          KKKKK\n          +++++    :::::::                                  LLLLL                                          KKKKK\n                   :::::::                                  LLLLL                                          KKKKK\n    ++++++++++++   :::::::   ::::            sSSSSSSSSs     LLLLL       aAAAAaa AAAAA        ccccccc       KKKKK     KKKKK\n   ++++++++++++++  :::::::  ::::::         SSSSSSSSSSSSSs   LLLLL     aAAAAAAAAAAAAAA      CCCCCCCCCCCc    KKKKK    KKKKK\n    ++++++++++++    :::::   :::::         SSSSSS    SSSSs   LLLLL    aAAAAAAAAAAAAAAA    cCCCCCCCCCCCCCC   KKKKK  KKKKK\n                                          SSSSSs            LLLLL   aAAAAa     AAAAAA    CCCCC     cCCCc   KKKKKKKKKK\n   :::::   :::::    +++++++++++++          sSSSSSSSSSs      LLLLL   aAAAA       AAAAA   CCCCC              KKKKKKKKKK\n  ::::::  :::::::  +++++++++++++++               sSSSSSs    LLLLL   aAAAAa     aAAAAA   CCCCCC     cCCCc   KKKKKkKKKKK\n   ::::   :::::::   +++++++++++++         SSSS     SSSSSs   LLLLL    aAAAAAAAAAAAAAAA    CCCCCcccccCCCCC   KKKKK  KKKKK\n          :::::::                         SSSSSSSSSSSSSs    LLLLL     aAAAAAAAAAAAAAA     cCCCCCCCCCCCC    KKKKK    KKKKK\n          :::::::  +++++                    sSSSSSSSSSs     LLLLL       aAAAAaa AAAAA       CCCCCCCCc      KKKKK     KKKKK\n          :::::::  ++++++\n           :::::    ++++\n\n\nThanks for taking a peek! Maybe a job is what you seek?\nhttps://slack.com/careers\n\n*/\n</script><link rel=\"canonical\" href=\"https://slack.com\">\n\n<link rel=\"alternate\" hreflang=\"en-us\" href=\"https://slack.com\">\n\n<link rel=\"alternate\" hreflang=\"en-au\" href=\"https://slack.com/intl/en-au\">\n\n<link rel=\"alternate\" hreflang=\"en-gb\" href=\"https://slack.com/intl/en-gb\">\n\n<link rel=\"alternate\" hreflang=\"en-in\" href=\"https://slack.com/intl/en-in\">\n\n<link rel=\"alternate\" hreflang=\"fr-ca\" href=\"https://slack.com/intl/fr-ca\">\n\n<link rel=\"alternate\" hreflang=\"fr-fr\" href=\"https://slack.com/intl/fr-fr\">\n\n<link rel=\"alternate\" hreflang=\"de-de\" href=\"https://slack.com/intl/de-de\">\n\n<link rel=\"alternate\" hreflang=\"es-es\" href=\"https://"
+  }
+}
