@@ -1,13 +1,13 @@
 # Bug Bounty Raporu — Uniswap_v4-core
 
-**Tarih:** 2026-11-01 08:23 UTC
+**Tarih:** 2026-11-01 08:42 UTC
 **Pipeline:** recon-and-auditor → skeptical-triager → report-dispatcher
 **Gönderim eşiği:** confidence >= 90 ve verdict == PASS
 
 ## 📦 0. Yetki/Scope Kaydı
 * **Beyan edilen yetki:** Immunefi Official Public Bug Bounty Program (https://immunefi.com/bug-bounty/uniswap/) — Exact Matching Repository: https://github.com/Uniswap/v4-core (Complete src/ dosyalari; bu turda PoolManager, Pool ve 13 yardimci dosya)
 * **Ham veri kaynağı:** `scripts/bugbounty/out/Uniswap_v4-core/raw`
-* **Engellenen/erişilemeyen adımlar:** Program sayfasi bu ortamdan dogrulanamadi (ag politikasi); scope iddiasi gonderimdeki metne dayaniyor. Yalnizca halka acik kaynak kodun statik incelemesi., Bu tur 11-12 tarihli gonderim (102.516 karakter) okundu; onceki turlarda okunan dosyalarla birlikte PoolManager, Pool, Hooks, ERC6909(+Claims), ProtocolFees, SwapMath, SqrtPriceMath, CurrencyDelta, NonzeroDeltaCount, Lock ve bu turun 13 dosyasi (FullMath, UnsafeMath, TickMath, TickBitmap, Position, ProtocolFeeLibrary, LPFeeLibrary, CurrencyReserves, SafeCast, BalanceDelta, BeforeSwapDelta, Currency, Slot0) incelendi., Hala saglanmayan dosyalar: LiquidityMath.addDelta, BitMath (mostSignificantBit/leastSignificantBit — TickMath ve TickBitmap bunlara dayaniyor), CustomRevert, ParseBytes (hook donus verisi ayristirma), NoDelegateCall, Extsload/Exttload, FixedPoint96/128, PoolKey/PoolId/PoolOperation tipleri, arayuzler. TickMath testinde BitMath.mostSignificantBit Python'da bit_length()-1 olarak VARSAYILDI.
+* **Engellenen/erişilemeyen adımlar:** Program sayfasi bu ortamdan dogrulanamadi (ag politikasi); scope iddiasi gonderimdeki metne dayaniyor. Yalnizca halka acik kaynak kodun statik incelemesi., Bu tur 11-12 tarihli gonderim (102.516 karakter) okundu; onceki turlarda okunan dosyalarla birlikte PoolManager, Pool, Hooks, ERC6909(+Claims), ProtocolFees, SwapMath, SqrtPriceMath, CurrencyDelta, NonzeroDeltaCount, Lock ve bu turun 13 dosyasi (FullMath, UnsafeMath, TickMath, TickBitmap, Position, ProtocolFeeLibrary, LPFeeLibrary, CurrencyReserves, SafeCast, BalanceDelta, BeforeSwapDelta, Currency, Slot0) incelendi., Bu turda (Final 4 Libraries) LiquidityMath, BitMath, ParseBytes, CustomRevert okundu; PoolManager.sol ve Pool.sol onceki turdakiyle BAYT BAYT AYNI (diff 0). Hala saglanmayan dosyalar: NoDelegateCall, Extsload/Exttload, FixedPoint96/128, PoolKey/PoolId/BalanceDelta/Currency tipleri ve arayuzler (bu turda gelmedi). Bunlar hakkinda hukum verilmedi.
 
 ### 📓 Analist Notları (bulgu değil, ama kayda değer)
 _Bu gözlemler Stage 2'nin ≥90 eşiğine hiç girmedi — somut kanıt eksikliği nedeniyle bilinçli olarak bulgu olarak sunulmadı. Şeffaflık için burada tutuluyor; bir sonraki veri çekiminde ek kaynak kodla yeniden değerlendirilebilir._
@@ -18,6 +18,10 @@ _Bu gözlemler Stage 2'nin ≥90 eşiğine hiç girmedi — somut kanıt eksikli
 * UCRET KUTUPHANELERI: ProtocolFeeLibrary.calculateSwapFee = p + l - p*l/1e6, dogrulanmis girdilerle (p<=1000, l<=1e6) sonuc 1e6'yi asmiyor; isValidProtocolFee iki yonu ayri ayri 1001'e karsi kontrol ediyor. LPFeeLibrary: DYNAMIC_FEE_FLAG yalnizca esitlikle taniniyor, statik ucret <= 1e6 dogrulaniyor, override'li ucret removeOverrideFlagAndValidate ile.
 * DIGER: Slot0 maske sabiti 2^160-1'e esit (kodla dogrulandi), alan konumlari (160/184/208) ve setter'lar maskeliyor; BalanceDelta add/sub 256 bitte toplayip toInt128 ile kontrol ediyor; BeforeSwapDelta paketleme/acma dogru; CurrencyReserves gecici depolamada para birimini maskeleyip saklıyor. Currency.transfer: Yul'de arguman degerlendirme sirasi sagdan sola oldugu icin call() sonrasinda returndatasize/mload okunuyor (dogru); hedefte KOD OLUP OLMADIGI kontrol edilmiyor — kodsuz bir token adresine take() cagrisi transferi sessizce no-op yapar ama delta borca yazildigindan ve balanceOf kodsuz adreste revert ettiginden (sync/settle) borc odenemiyor, islem geri aliniyor; calinti yolu YOK.
 * SONUC: PoolManager, Pool, Hooks ve bu turun 13 dosyasi dahil toplam ~30 dosyada somut kanitli aciklik BULUNMADI. Kalan: LiquidityMath, BitMath, ParseBytes, CustomRevert, NoDelegateCall, Extsload/Exttload ve tipler/arayuzler incelenmedi.
+* LIQUIDITYMATH.addDelta: assembly'de z := add(and(x, mask128), signextend(15, y)); shr(128, z) != 0 ise revert - uint128 x ile int128 y icin hem tasma hem alt-tasma durumlarini tek kontrolle yakaliyor (mantik elle dogrulandi: y negatif ve |y|>x ise z 128 bit ustunde bit tasir).
+* BITMATH DIFERANSIYEL TEST: mostSignificantBit ve leastSignificantBit Python'a birebir portlandi; 200.769 degerde (tum 2^k, 2^k-1, 2^k+1, 255 icin sinir degerleri ve rastgele) referans uygulamayla 0 uyusmazlik. TickBitmap bu fonksiyonlara guvendigi icin onceki tur sonucu pekisti.
+* PARSEBYTES / CUSTOMREVERT: ParseBytes assembly okumalari uzunluk/ofset sinirlarini kontrol ediyor; CustomRevert bubbleUp/revertWith* yardimcilari secici ve argumanlari standart bellek duzeniyle yaziyor (bellek bozma yok).
+* SONUC: Saglanan 4 kutuphanede ve onceden incelenmis cekirdekte (PoolManager/Pool degismedi) 'Critical' esigini gececek somut kanitli bir bulgu YOK. Eksik dosyalar hakkinda hukum verilmedi.
 
 ## 📊 1. HIZLI TRİYAJ KARARI
 * **Durum:** `[⚪ TEMİZ - GEÇ]`
