@@ -1,0 +1,31 @@
+{
+  "target": "hackerone.com",
+  "scope_declaration": "Authorized Public Bug Bounty Program (HackerOne / Immunefi) passive recon scope for hackerone.com",
+  "raw": {
+    "crtsh_subdomains": [
+      "api.hackerone.com"
+    ],
+    "cname_records": {},
+    "js_endpoints": [
+      {
+        "source_url": "https://hackerone.com/sites/default/files/js/js_7gNnZ5WRF8iu0xHlUQ1fRJeJMvrryhO5pKbIadqb6o8.js?scope=header&amp;delta=0&amp;language=en&amp;theme=hackerone&amp;include=eJxdzuEKgzAMBOAXsit7onLVLGamjdRM9O0n22BufwL3HRyhzVXqFIf2mKEXeseOzVgpOTjycf7zBXdsv1i6Ef1EzSpFVsvQsPRNZl9OxXgtaBO5nWyGjzf0bm0PtlJT7KfWaXEpVgV6HlqhMsDF6hcTShaqnjKnVQay-IGQObwguPHx8RNLsV7S",
+        "matches": [
+          "/api"
+        ]
+      },
+      {
+        "source_url": "https://hackerone.com/modules/contrib/google_tag/js/gtag.js?tnotwu",
+        "matches": [
+          "/api"
+        ]
+      },
+      {
+        "source_url": "https://hackerone.com/modules/contrib/google_tag/js/gtm.js?tnotwu",
+        "matches": [
+          "/api"
+        ]
+      }
+    ],
+    "homepage_html_excerpt": "<!DOCTYPE html>\n<html lang=\"en\" dir=\"ltr\" prefix=\"og: https://ogp.me/ns#\">\n  <head>\n    <meta charset=\"utf-8\" />\n<meta name=\"description\" content=\"HackerOne combines AI with the ingenuity of the largest community of security researchers to find and fix security, privacy, and AI vulnerabilities across the SDLC. HackerOne offers AI red teaming, crowdsourced security, bug bounty, vulnerability disclosure and pentesting.\" />\n<link rel=\"canonical\" href=\"https://www.hackerone.com/\" />\n<link rel=\"shortlink\" href=\"https://www.hackerone.com/\" />\n<meta property=\"og:site_name\" content=\"HackerOne\" />\n<meta property=\"og:url\" content=\"https://www.hackerone.com/hackerone\" />\n<meta property=\"og:title\" content=\"HackerOne | Leader in Continuous Threat Exposure Management | Security for AI\" />\n<meta property=\"og:description\" content=\"HackerOne combines AI with the ingenuity of the largest community of security researchers to find and fix security, privacy, and AI vulnerabilities across the SDLC. HackerOne offers AI red teaming, crowdsourced security, bug bounty, vulnerability disclosure and pentesting.\" />\n<meta property=\"og:image\" content=\"https://www.hackerone.com/sites/default/files/styles/og_image/public/2025-02/hackerone.png.jpg?itok=mjSe5m5q\" />\n<meta property=\"og:image:width\" content=\"1200\" />\n<meta property=\"og:image:height\" content=\"630\" />\n<meta property=\"og:image:alt\" content=\"hackerone\" />\n<meta name=\"MobileOptimized\" content=\"width\" />\n<meta name=\"HandheldFriendly\" content=\"true\" />\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n<script type=\"application/ld+json\">{\n    \"@context\": \"https://schema.org\",\n    \"@graph\": [\n        {\n            \"@type\": \"Organization\",\n            \"@id\": \"https://www.hackerone.com/#organization\",\n            \"name\": \"HackerOne\",\n            \"url\": \"https://www.hackerone.com/\"\n        },\n        {\n            \"@type\": \"WebSite\",\n            \"@id\": \"https://www.hackerone.com/#website\",\n            \"name\": \"HackerOne\",\n            \"url\": \"https://www.hackerone.com/\",\n            \"publisher\": {\n                \"@type\": \"Organization\",\n                \"@id\": \"https://www.hackerone.com/#organization\"\n            },\n            \"inLanguage\": \"en\"\n        }\n    ]\n}</script>\n\n    <title>HackerOne | Leader in Continuous Threat Exposure Management | Security for AI</title>\n    <link rel=\"manifest\" href=\"/themes/custom/hackerone/assets/favicons/manifest.webmanifest\">\n    <link rel=\"icon\" href=\"/themes/custom/hackerone/a"
+  }
+}
