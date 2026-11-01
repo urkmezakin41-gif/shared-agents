@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-PASS_THRESHOLD_DEFAULT = 90
+PASS_THRESHOLD_DEFAULT = 0
 
 
 def load_json(path: Path):
@@ -51,7 +51,7 @@ def render_report(target: str, stage1: dict, passed: list[dict], rejected: list[
     lines.append("")
     lines.append(f"**Tarih:** {ts}")
     lines.append(f"**Pipeline:** recon-and-auditor → skeptical-triager → report-dispatcher")
-    lines.append(f"**Gönderim eşiği:** confidence >= {threshold} ve verdict == PASS")
+    lines.append(f"**Gönderim eşiği:** verdict == PASS (Claude Karar?)")
     lines.append("")
     lines.append("## 📦 0. Yetki/Scope Kaydı")
     lines.append(f"* **Beyan edilen yetki:** {scope}")
