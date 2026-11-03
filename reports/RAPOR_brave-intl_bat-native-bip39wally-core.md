@@ -1,0 +1,26 @@
+# Bug Bounty Raporu — brave-intl_bat-native-bip39wally-core
+
+**Tarih:** 2026-11-03 22:40 UTC
+**Pipeline:** recon-and-auditor → skeptical-triager → report-dispatcher
+**Gönderim eşiği:** verdict == PASS (Claude Karar?)
+
+## 📦 0. Yetki/Scope Kaydı
+* **Beyan edilen yetki:** HackerOne Official Program: Brave Software (https://hackerone.com/brave) — Exact 1-to-1 Wildcard SOURCE_CODE Asset Identifier: brave-intl -> https://github.com/brave-intl/bat-native-bip39wally-core (structured_scope id: 943222, eligible_for_bounty: true, max_severity: critical). Language: C. Description: Production repository.
+* **Ham veri kaynağı:** `scripts/bugbounty/out/brave-intl_bat-native-bip39wally-core/raw`
+* **Engellenen/erişilemeyen adımlar:** Bu, Blockstream'in 'libwally-core' kutuphanesinin (BIP32/BIP38/BIP39 + vendored secp256k1) Brave tarafindan vendored/entegre edilmis hali -- teslim edilen veride SADECE header (.h) dosyalari TAM olarak mevcut; asil implementasyon (.c/.cc) dosyalarinin BUYUK COGUNLUGU (bip32.c, bip38.c, sign.c, address.c, vb.) teslim edilen veride YOKTU -- yalnizca iki recent commit'in DOGRUDAN degistirdigi iki dosyanin (mnemonic.cc, wordlist.cc) ONCEKI/SONRAKI diff'i goruntulenebildi. Bu nedenle genis implementasyon yuzeyi (BIP32 turetme, imzalama, adres kodlama) bu oturumda incelenemedi.
+
+### 📓 Analist Notları (bulgu değil, ama kayda değer)
+_Bu gözlemler Stage 2'nin ≥90 eşiğine hiç girmedi — somut kanıt eksikliği nedeniyle bilinçli olarak bulgu olarak sunulmadı. Şeffaflık için burada tutuluyor; bir sonraki veri çekiminde ek kaynak kodla yeniden değerlendirilebilir._
+* Hedef, Blockstream'in yaygin kullanilan, cok-denetlenmis 'libwally-core' Bitcoin cuzdan kutuphanesinin (BIP32/BIP38/BIP39 + tam vendored secp256k1 kaynak kodu) Brave tarafindan BAT cuzdan baglama ozelligi icin vendored edilmis hali -- EXTREMLY YUKSEK DEGERLI bir kripto kutuphanesi (dogru calismamasi SEED PHRASE/ozel anahtar sizintisi veya hesaplamasi anlamina gelir).
+* Birinci recent commit (`4bf646bfb1`) SADECE Renovate bot yapilandirmasi ekliyor (.github/renovate.json) -- guvenlik etkisi YOK.
+* IKINCI recent commit (`547a781033`) -- TARIHSEL OLARAK ONEMLI, ANCAK ARTIK ZATEN DUZELTILMIS bir bellek-guvenligi hatasini SAHIP: `src/wordlist.cc::wordlist_alloc()`'un ESKI hali, `wally_malloc()`'tan donen BELLEGI SIFIRLAMADAN birakiyordu, ve EGER `w->indices` tahsisi BASARISIZ olursa (orn. dusuk-bellek/OOM kosulu), kod `w->str_len = 0` atadiktan SONRA `wordlist_free(w)`'u cagiriyordu. ESKI `wordlist_free()` yalnizca `if (w && w->str_len)` kosulu DOGRUYSA `w->str`'yi (zaten BASARIYLA strdup edilmis, SIFIRLANMAMIS bir bellek bloğu) `wally_clear()` ile SILIYOR ve `wally_free()` ile serbest birakiyordu -- `str_len` ONCEDEN 0'a ayarlandiği icin bu kosul ATLANIYOR, yani `w->str` (eger bu cagiri `wordlist_init(mnemonic)` araciligiyla KULLANICININ KENDI BIP-39 SEED PHRASE'INI (mnemonic) islerken olustuysa) ASLA sifirlanmadan (wally_clear olmadan) VE ASLA serbest birakilmadan (bellek sizintisi) terk ediliyordu -- yani kullanicinin DUZ-METIN seed phrase'i, OOM gibi NADIR ama GERCEKCI bir hata durumunda, bellekte SONSUZA KADAR SIFIRLANMAMIS/SERBEST-BIRAKILMAMIS olarak kalabiliyordu (CWE-226: Sensitive Information Uncleared Before Release). DUZELTME: `wordlist_alloc()` artik `wally_malloc()` SONRASINDA HEMEN `wally_clear(w, sizeof(*w))` cagiriyor (struct'i GARANTILI sifirlayarak `str_len`'in baslangicta DOGRU/sifir olmasini sagliyor, cakisan manuel 'w->str_len = 0' satiri kaldirilmis), VE `wordlist_free()` artik `if (w)` kontrolune (str_len kosulu KALDIRILMIS) gore `w->str` varsa HER ZAMAN serbest birakiyor (`wally_clear` icin ayri bir `if (w->str_len)` ic-kontrolu ekleniyor, sadece GERCEK uzunluk > 0 oldugunda temizlemek icin, ama HER ZAMAN serbest birakarak sizintiyi de kapatiyor).
+* Teslim edilen GUNCEL kod bu duzeltmeyi ZATEN icerir (diff, repo'nun GUNCEL durumunu gosteriyor) -- bu nedenle bu, SU AN istismar edilebilir bir acik DEGIL; ancak gecmiste gercek bir tehlike olusturdugu ve kutuphanenin KENDI guvenlik modeliyle (BIP-39 mnemonic bellek-temizleme) DIREKT ilgili oldugu icin DETAYLI olarak kaydediliyor.
+* mnemonic.cc'deki ikinci degisiklik (argument dogrulamasini `wordlist_init(mnemonic)` CAGRISINDAN ONCE tasima) ayrica savunma-katmanini guclendiriyor -- erken-don (early-return) pattern'i, gecersiz argumanlarla gereksiz bellek tahsisini ONLEME anlaminda bir iyilestirme, ancak KENDI BASINA kritik bir guvenlik acigi degildi.
+* SONUC: Bu oturumda teslim edilen veri (TAM olarak gorulen 2 commit + sinirli dosya kumesi) icinde PASS veya hint-tier seviyesinde raporlanabilir bir GUNCEL guvenlik acigi TESPIT EDILEMEDI -- en onemli bulgu ZATEN duzeltilmis. Temiz rapor (findings=[]) teslim ediliyor; onemli tarihsel baglam yukarida kaydedildi.
+
+## 📊 1. HIZLI TRİYAJ KARARI
+* **Durum:** `[⚪ TEMİZ - GEÇ]`
+* **Not:** Stage 1, 0 aday bulgu üretti; bunlardan hiçbiri Stage 2'nin ≥0 confidence eşiğini geçemedi.
+
+---
+_Bu rapor `scripts/bugbounty/dispatch.py` tarafından otomatik üretildi. Hiçbir bulgu GitHub Private Vulnerability Reporting API'sine veya HackerOne API'sine otomatik olarak gönderilmedi — gönderim her zaman insan onayı ve elle yapıştırma gerektirir._
