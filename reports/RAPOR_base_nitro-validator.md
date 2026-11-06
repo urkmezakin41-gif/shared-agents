@@ -1,0 +1,26 @@
+# Bug Bounty Raporu — base_nitro-validator
+
+**Tarih:** 2026-11-03 17:40 UTC
+**Pipeline:** recon-and-auditor → skeptical-triager → report-dispatcher
+**Gönderim eşiği:** verdict == PASS (Claude Karar?)
+
+## 📦 0. Yetki/Scope Kaydı
+* **Beyan edilen yetki:** HackerOne Official Program: Coinbase / Base (https://hackerone.com/coinbase) — Exact 1-to-1 Wildcard SOURCE_CODE Asset Identifier: https://github.com/base/* -> https://github.com/base/nitro-validator (structured_scope id: 1028889, eligible_for_bounty: true, max_severity: critical). Language: Solidity. Description: AWS Nitro enclave attestation verifier in Solidity, used by:.
+* **Ham veri kaynağı:** `scripts/bugbounty/out/base_nitro-validator/raw`
+* **Engellenen/erişilemeyen adımlar:** Asil P-384 ECDSA DOGRULAMA MATEMATIGINI iceren `src/vendor/ECDSA384.sol` dosyasi teslim edilen veride YOKTU (yalnizca ona CAGRI YAPAN P384Verifier.sol ve egri PARAMETRELERINI tanimlayan ECDSA384Curve.sol teslim edildi). Bu nedenle modular-ters hint dogrulamasinin veya nokta-carpma algoritmasinin dusuk-seviye DOGRULUGU (orn. nokta-sonsuzluk/sifir-nokta kenar durumlari) TAM OLARAK incelenemedi -- yalnizca egri SABITLERININ dogrulugu (asagida) ve bu kutuphaneye yapilan CAGRININ guvenligi degerlendirilebildi.
+
+### 📓 Analist Notları (bulgu değil, ama kayda değer)
+_Bu gözlemler Stage 2'nin ≥90 eşiğine hiç girmedi — somut kanıt eksikliği nedeniyle bilinçli olarak bulgu olarak sunulmadı. Şeffaflık için burada tutuluyor; bir sonraki veri çekiminde ek kaynak kodla yeniden değerlendirilebilir._
+* Hedef, AWS Nitro Enclave uzaktan-tanıklama (remote attestation) belgelerini Solidity icinde dogrulayan bir kutuphane -- bu, zincir-ustu bir sistemin bir hesaplamanin GERCEKTEN guvenli bir TEE (Trusted Execution Environment) icinde calistigina GUVENMESINI saglayan KRITIK bir guven-koku bileseni. Depo ZATEN IKI KEZ Cantina tarafindan profesyonelce denetlenmis (Ocak 2025 ve Agustos 2026) -- son iki commit SADECE bu denetim raporlarinin README'ye eklenmesi + bir sozlesme-boyutu-kisit notu (EIP-170 limiti) -- KOD DEGISIKLIGI YOK.
+* ECDSA384Curve.sol'daki TUM alti egri parametresi (CURVE_P, CURVE_A, CURVE_B, CURVE_GX, CURVE_GY, CURVE_N) Python'un denetlenmis `ecdsa` kutuphanesi (NIST384p) araciligiyla HESAPLANAN kanonik degerlerle TAM OLARAK BIREBIR ESLESTIRILEREK dogrulandi -- hiçbir sapma yok. CURVE_LOW_S_MAX = N-1 (N/2 DEGIL) olmasi, AWS Nitro imzalarinin low-S garantisi OLMADIGI icin KASITLI ve dogru belgelenmis bir tasarim secimi (bu katmanda imza-malleability koruması YOK, ancak entegratorler bunun acikca uyarildigi ve 'imzayi benzersizlik anahtari olarak kullanma' seklinde dogru yonlendirildigi).
+* CertManager.sol: iptal (revocation) mekanizmasi KASITLI OLARAK ham sertifika-hash'i yerine (issuer, serial) KIMLIGINE gore yapiliyor (acik yorum: 'ECDSA signatures are malleable and DER is re-encodable, so byte-keying would let a re-encoded twin of a revoked cert slip through') -- bu, TAM OLARAK sorgulayacagim bir bypass sinifini ONCEDEN engelliyor. `_isPinnedRootAlias()` kok sertifikanin bir 'malleability ikizinin' ikinci bir onbellek-anahtari olarak kabul edilmesini ayrica engelliyor. `_requireCachedChainValid()` ONBELLEKLENMIS (warm) bir sertifika kullanildiginda da zincirin TAMAMINI (koke kadar) iptal/suresi-gecme kontrolu icin YENIDEN YORUYOR -- eski bir onbellek girisinin SONRADAN iptal edilmis bir sertifikayi gecerli gibi gostermesini engelliyor.
+* NitroValidator.sol: COSE_Sign1/CBOR ayristirma mantigi (derinlik-sinirli ozyineleme, sinirlari-kontrollu offset hesaplamalari, belirsiz-uzunluklu kodlamalarin aciqca reddedilmesi, tekrarlanan anahtarlarin reddedilmesi) son derece savunmaci. `validateAttestationWithHints()`'in NatSpec'i, KASITLI OLARAK ZORUNLU KILINMAYAN uc ozelligi (tazel-lik/anti-replay, imza-benzersizligi, PCR/moduleID politikasi) ACIKCA belgeliyor ve entegratorlere TAM sorumluluk devrini yapiyor -- bu, GIZLI bir eksiklik degil, KASITLI, belgelenmis bir tasarim sinirlari.
+* CborDecode.sol'daki `_skipValue`/`elementAt` fonksiyonlari TUM sinir-disi erisimlere karsi (`require(p + arg <= cbor.length, ...)`), derinlik asimina karsi (`MAX_CBOR_DEPTH`), ve RFC 8949 disi kodlamalara (rezerve edilmis additional-info degerleri, gecersiz belirsiz-uzunluk parcalari) karsi acikca korunuyor.
+* SONUC: Iki kez profesyonelce denetlenmis, degismemis (son commit'ler salt dokumantasyon) bir kripto-dogrulama kutuphanesinde, egri-sabitlerinin bire-bir dogrulanmasi ve TUM cekirdek guven-zinciri mantiginin (iptal, onbellek, CBOR/ASN.1 ayristirma) derinlemesine incelenmesi SONUCUNDA PASS veya hint-tier seviyesinde raporlanabilir YENI bir guvenlik acigi TESPIT EDILEMEDI. Temiz rapor (findings=[]) teslim ediliyor.
+
+## 📊 1. HIZLI TRİYAJ KARARI
+* **Durum:** `[⚪ TEMİZ - GEÇ]`
+* **Not:** Stage 1, 0 aday bulgu üretti; bunlardan hiçbiri Stage 2'nin ≥0 confidence eşiğini geçemedi.
+
+---
+_Bu rapor `scripts/bugbounty/dispatch.py` tarafından otomatik üretildi. Hiçbir bulgu GitHub Private Vulnerability Reporting API'sine veya HackerOne API'sine otomatik olarak gönderilmedi — gönderim her zaman insan onayı ve elle yapıştırma gerektirir._

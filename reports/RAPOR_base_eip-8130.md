@@ -1,0 +1,26 @@
+# Bug Bounty Raporu — base_eip-8130
+
+**Tarih:** 2026-11-03 14:40 UTC
+**Pipeline:** recon-and-auditor → skeptical-triager → report-dispatcher
+**Gönderim eşiği:** verdict == PASS (Claude Karar?)
+
+## 📦 0. Yetki/Scope Kaydı
+* **Beyan edilen yetki:** HackerOne Official Program: Coinbase / Base (https://hackerone.com/coinbase) — Exact 1-to-1 Wildcard SOURCE_CODE Asset Identifier: https://github.com/base/* -> https://github.com/base/eip-8130 (structured_scope id: 1028889, eligible_for_bounty: true, max_severity: critical). Language: Solidity. Description: Production repository.
+* **Ham veri kaynağı:** `scripts/bugbounty/out/base_eip-8130/raw`
+* **Engellenen/erişilemeyen adımlar:** Core `Keystore.sol` sozlesmesinin kendisi (actor-config/scope/authenticator depolama ve `K1_AUTHENTICATOR()`/`getActorConfig()`/`authenticateActor()`/`getPolicyCommitment()`/`getActorWithPolicy()` fonksiyonlarinin gercek implementasyonu) teslim edilen veride YOKTU -- DefaultAccount.sol, DelegateAuthenticator.sol ve PolicyManager.sol'un TUMU bu sozlesmeye referans veriyor ama kendisi incelenemedi. Bu, asagidaki analizin Keystore'un KENDI dogrulugunu varsaydigi anlamina geliyor.
+
+### 📓 Analist Notları (bulgu değil, ama kayda değer)
+_Bu gözlemler Stage 2'nin ≥90 eşiğine hiç girmedi — somut kanıt eksikliği nedeniyle bilinçli olarak bulgu olarak sunulmadı. Şeffaflık için burada tutuluyor; bir sonraki veri çekiminde ek kaynak kodla yeniden değerlendirilebilir._
+* Hedef, EIP-8130'un (Base'in yeni islem/gaz-ve-yetkilendirme protokolu) referans Solidity implementasyonu -- hesap varsayilanlari (DefaultAccount), authenticator'lar (k1 implicit, Delegate, P256, WebAuthn), ve 'denetlenmemis ornek' politika sozlesmeleri (PolicyManager, SessionPolicy, RecurringAllowance) -- Deploy.s.sol'un kendi yorumunda PolicyManager/SessionPolicy acikca 'unaudited example policy contracts' olarak etiketleniyor.
+* ONEMLI TARIHSEL BULGU (ARTIK DUZELTILMIS -- yeni bir guvenlik acigi DEGIL): Ikinci recent commit (36bf7fe8dd), `DefaultAccount._isAuthorizedCaller()`'da GERCEK bir ayricalik-yukseltme hatasini duzeltiyor. ESKI kod: `if (config.authenticator == address(0)) return false; return Scopes.isOperator(config.scope);` -- bu, HANGI authenticator turunden olursa olsun (k1/EOA, Delegate, P256, veya WebAuthn) 'operasyonel' scope'a (admin veya OPERATOR) sahip HERHANGI bir CANLI aktorun `executeBatch`/`execute`'u DOGRUDAN `msg.sender` eslesmesiyle tetikleyebilmesine izin veriyordu. YENI (teslim edilen, GUNCEL) kod: `if (config.authenticator != KEYSTORE.K1_AUTHENTICATOR()) return false;` -- dogrudan-cagri yolunu KESINLIKLE k1 authenticator'a kisitliyor. Teslim edilen `DefaultAccount.sol`'un TAM dosya icerigi bu DUZELTILMIS kodu zaten iceriyor -- yani bu ARTIK istismar edilebilir bir acik DEGIL, sadece onemli bir gecmis-baglam notu.
+* DelegateAuthenticator.sol, P256Authenticator.sol, WebAuthnAuthenticator.sol tam incelendi: Delegate yalnizca 1-hop'a izin veriyor (RecursiveDelegation koruması), nested signer'in delege edilen hesabin ADMIN'i (scope==0) olmasini zorunlu kiliyor; P256/WebAuthn OpenZeppelin'in denetlenmis P256/WebAuthn kutuphanelerine devrediyor ve gecersiz imzada REVERT etmek yerine dogru sekilde bytes32(0) donduruyor (cagiranlarin 'gecersiz' ile 'hata' durumunu ayirt edebilmesi icin).
+* PolicyManager.sol (unaudited example): `execute()` (hesap-tetikli yol) kimligi TX_CONTEXT precompile'inden okuyor ve `binding.account == msg.sender` zorunlu kiliyor; `executeFor`/`executeForMany` (harici-cagiran yolu) `EXTERNAL_POLICY_AUTHENTICATOR` sentinel kontrolu + manager-eslesmesi yapiyor; TUM giris noktalari TEK bir ReentrancyGuard paylasıyor (yorumda ACIKCA gerekcelendirilmis: TX-context actorId islem-genelinde global oldugundan, ayri guard'lar reentrant bir execute'un farkli bir hesabin kimligini cozmesine izin verebilirdi).
+* SessionPolicy.sol (unaudited example, ama olagandisi derecede ayrintili belgelenmis): SelfTargetNotAllowed kontrolu (bir session key'in hesabin KENDI executeBatch'ini cagirip TUM politika kontrollerini atlayabilmesini engelliyor), native-ETH-deger 'fail closed' semantikleri, ERC20 selector/recipient/miktar decode'unun assembly-tabanli ama UZUNLUK-kontrollu (MalformedTokenCall) implementasyonu, ve KASITLI/belgelenmis bir sinirlama ('approve sonrasi standing allowance'in period sinirlarini asarak tekrar cekilebilmesi') tam dogrulandi -- implementasyon, kendi KAPSAMLI dokumantasyonuyla TUTARLI bulundu, bir ayriklik yok.
+* SONUC: Teslim edilen veri (bir ONEMLI ama ZATEN-DUZELTILMIS yetki-yukseltme bug-fix commit'i + 15 tam dosya derinlemesine statik inceleme) icinde PASS veya hint-tier seviyesinde raporlanabilir YENI bir guvenlik acigi TESPIT EDILEMEDI. Temiz rapor (findings=[]) teslim ediliyor.
+
+## 📊 1. HIZLI TRİYAJ KARARI
+* **Durum:** `[⚪ TEMİZ - GEÇ]`
+* **Not:** Stage 1, 0 aday bulgu üretti; bunlardan hiçbiri Stage 2'nin ≥0 confidence eşiğini geçemedi.
+
+---
+_Bu rapor `scripts/bugbounty/dispatch.py` tarafından otomatik üretildi. Hiçbir bulgu GitHub Private Vulnerability Reporting API'sine veya HackerOne API'sine otomatik olarak gönderilmedi — gönderim her zaman insan onayı ve elle yapıştırma gerektirir._

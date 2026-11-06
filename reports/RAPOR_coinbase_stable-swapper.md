@@ -1,0 +1,28 @@
+# Bug Bounty Raporu — coinbase_stable-swapper
+
+**Tarih:** 2026-11-01 18:41 UTC
+**Pipeline:** recon-and-auditor → skeptical-triager → report-dispatcher
+**Gönderim eşiği:** verdict == PASS (Claude Karar?)
+
+## 📦 0. Yetki/Scope Kaydı
+* **Beyan edilen yetki:** HackerOne Official Program: Coinbase (https://hackerone.com/coinbase) - SOURCE_CODE wildcard https://github.com/coinbase/* (structured_scope id 1028888, eligible_for_bounty: true, max_severity: critical) -> hedef https://github.com/coinbase/stable-swapper. Blok varlikla eslesiyor; program sayfasi bu ortamdan dogrulanamadi.
+* **Ham veri kaynağı:** `scripts/bugbounty/out/coinbase_stable-swapper/raw`
+* **Engellenen/erişilemeyen adımlar:** Program sayfasi bu ortamdan dogrulanamadi; statik inceleme, kod calistirilmadi (Foundry/Anchor kurulamadi)., Okunan (tam): evm/src/StableSwapper.sol (692), solana/programs/stable-swapper src/lib.rs (1239), state.rs, utils.rs, errors.rs, constants.rs ve son commit diff'i. GELMEYEN: OpenZeppelin alt modulu surumleri, Solana Anchor/spl bagimlilik surumleri, solana/tests ve EVM testleri, dagitim betikleri/yapilandirma. Hukum yalnizca okunan dosyalarla sinirli.
+
+### Ödül Dışı Olarak Atlanan Konular
+* [ÖDÜL DEĞERİ YOK - ATLANDI] Solana remove_supported_token, vault token hesabinin bakiyesinin TAM 0 olmasini sart kosuyor (VaultNotEmpty). SPL token hesabina herkes token gonderebildiginden, saldirgan siyaset 1 atomik birim gondererek (kaldirma islemini on-kosarak) bir tokenin kaldirilmasini engelleyebilir; treasury bakiyeyi cekebilir ama saldirgan tekrar tozlandirabilir. Yalnizca yonetim islemini geciktiren, fon kaybi olmayan bir griefing; token pause edilebildigi icin (disabled) risk sinirli -> Low/odul disi.
+
+### 📓 Analist Notları (bulgu değil, ama kayda değer)
+_Bu gözlemler Stage 2'nin ≥90 eşiğine hiç girmedi — somut kanıt eksikliği nedeniyle bilinçli olarak bulgu olarak sunulmadı. Şeffaflık için burada tutuluyor; bir sonraki veri çekiminde ek kaynak kodla yeniden değerlendirilebilir._
+* SON COMMIT (Solana): swap govdesi do_swap(&SwapAccounts) yardimci fonksiyonuna tasindi; yeni swap_v2 'whitelist' hesabi olmadan ayni mantigi cagiriyor. YENIDEN DUZENLEME DOGRULANDI: Swap ve SwapV2 hesap baglamlari yalnizca eski 'whitelist' UncheckedAccount'u (PDA tohumu dogrulanan ama hic okunmayan) bakimindan farkli; pool/in_vault/out_vault/vault token hesaplari icin tohum kisitlari, user_from/to hesaplari icin token::mint kisitlari, fee_recipient icin address = pool.fee_recipient ve ATA kisitlari ikisinde de BIREBIR ayni. do_swap eski govdeyle ayni kontrolleri sirasiyla yapiyor (duraklatma, miktar>0, vault disabled, desteklenen token, ayni token reddi, ondalik normalizasyonu, amount_out>0, kayma, likidite, uc transfer). Hesap dogrulamasi kaymasi bulunamadi.
+* SOLANA SWAP: ucret yukarı yuvarlaniyor (ceil), net miktar kasaya, ucret fee_recipient ATA'sina, cikti havuz PDA imzasiyla; amount_in = net + ucret toplami kullanicidan cekiliyor. normalize_decimals checked_pow/checked_mul/floor bolme; ondalik 6..9 sinirli (add_supported_token), tasma imkansiz. Vault'lar PDA'larla mint'e baglaniyor (TokenVault tohumu: pool+mint, vault token hesabi: vault), kullanici hesaplari yalnizca mint ve Signer yetkisiyle kisitli (SPL token programi sahipligi zorluyor). Yeni token vault'u disabled=true baslıyor.
+* SOLANA YETKI: initialize ve migrate_authorities programin ProgramData upgrade authority'si imzasiyla sinirli (program_data adresi program ID'den turetiliyor, baska programa yonlendirilemez); roller (pause, unpause, treasury, configure) has_one ile; sifir adres reddi; withdraw_liquidity yalnizca treasury_authority, alici hesabin OWNER'i allowlist'te olmak zorunda, allowlist'i yalnizca configure_authority yonetiyor. Eski sablonlu migrate: eski boyut/discriminator/sahip kontrolleri, yeniden calistirma korumasi, vektor uzunluk siniri. Sorun gosterilemedi.
+* EVM STABLESWAPPER: swap nonReentrant, listeli+swappable token, allowlist (aciksa) yalnizca cagirani kontrol ediyor; ucret girdi tokeninde yukarı yuvarlaniyor; cikti = normalize(net), min cikti>0 zorunlu, likidite = bakiye - reservedAmount; sirasiyla transferFrom(tam miktar), ucret, cikti (CEI + reentrancy guard). Yuvarlama havuz lehine. UUPS _authorizeUpgrade yalnizca DEFAULT_ADMIN_ROLE (iki adimli, gecikmeli); implementasyon _disableInitializers. Rollerin ayrimi (CONFIGURE, PAUSE, TREASURY) tutarli. Gozlemler (yonetici yapilandirmasi, bulgu degil): _safeDecimals basarisiz olursa 18 varsayiyor (yanlis ondalik listeleme tum havuzu bosaltabilecek bir fiyat hatasi olur ama yalnizca CONFIGURE_ROLE tetikler); EVM'de ucret ust siniri %100, Solana'da %10 (MAX_FEE_RATE=1000) tutarsiz; treasury rezerv miktarini aşarak cekebilir (belgelenmis).
+* SONUC: Iki zincirde okunan kodun TAMAMINDA 'Critical/High' esigini gecen, kod kanitli bir zafiyet BULUNAMADI. Yeniden duzenleme (do_swap/swap_v2) hesap dogrulamasini bozmuyor. 'Bulgu yok' yalnizca okunan dosyalar icin gecerlidir; kontrat/program calistirilarak fuzz edilmedi.
+
+## 📊 1. HIZLI TRİYAJ KARARI
+* **Durum:** `[⚪ TEMİZ - GEÇ]`
+* **Not:** Stage 1, 0 aday bulgu üretti; bunlardan hiçbiri Stage 2'nin ≥0 confidence eşiğini geçemedi.
+
+---
+_Bu rapor `scripts/bugbounty/dispatch.py` tarafından otomatik üretildi. Hiçbir bulgu GitHub Private Vulnerability Reporting API'sine veya HackerOne API'sine otomatik olarak gönderilmedi — gönderim her zaman insan onayı ve elle yapıştırma gerektirir._

@@ -1,0 +1,27 @@
+# Bug Bounty Raporu — base_eip-7702-proxy
+
+**Tarih:** 2026-11-03 19:41 UTC
+**Pipeline:** recon-and-auditor → skeptical-triager → report-dispatcher
+**Gönderim eşiği:** verdict == PASS (Claude Karar?)
+
+## 📦 0. Yetki/Scope Kaydı
+* **Beyan edilen yetki:** HackerOne Official Program: Coinbase / Base (https://hackerone.com/coinbase) — Exact 1-to-1 Wildcard SOURCE_CODE Asset Identifier: https://github.com/base/* -> https://github.com/base/eip-7702-proxy (structured_scope id: 1028889, eligible_for_bounty: true, max_severity: critical). Language: Solidity. Description: A lightweight ERC-1967 proxy for EOA upgrades to `CoinbaseSmartWallet`.
+* **Ham veri kaynağı:** `scripts/bugbounty/out/base_eip-7702-proxy/raw`
+* **Engellenen/erişilemeyen adımlar:** yok
+
+### 📓 Analist Notları (bulgu değil, ama kayda değer)
+_Bu gözlemler Stage 2'nin ≥90 eşiğine hiç girmedi — somut kanıt eksikliği nedeniyle bilinçli olarak bulgu olarak sunulmadı. Şeffaflık için burada tutuluyor; bir sonraki veri çekiminde ek kaynak kodla yeniden değerlendirilebilir._
+* Hedef, EIP-7702 (EOA kodunu bir sozlesmeye devretme) aracligiyla bir EOA'yi `CoinbaseSmartWallet` mantigina 'yukseltmek' icin kullanilan KUCUK ama SON DERECE KRITIK bir proxy -- bir EOA'nin kendi adresini KORUYARAK akilli hesap ozelliklerine gecmesini saglayan temel guven mekanizmasi. YUKSEK DEGERLI bir hedef oldugu icin TUM 5 kaynak dosyasi (EIP7702Proxy.sol, NonceTracker.sol, CoinbaseSmartWalletValidator.sol, DefaultReceiver.sol, IAccountStateValidator.sol) satir-satir incelendi.
+* Son iki commit TAMAMEN dokumantasyon (README deploy talimatlari) ve YENI bir deployment script'i (script/Deploy.s.sol, CREATE2 ile deterministik adreslerin assert edilmesi) ekliyor -- GUVENLIK MANTIGINDA degisiklik YOK.
+* `EIP7702Proxy.setImplementation()`'in imza-dogrulama zinciri derinlemesine incelendi: imzalanan hash `_proxy` (proxy'nin KENDI sabit adresi, construct-zamaninda sabitlenmis), `nonceTracker.useNonce()` (EOA-bazinda, `msg.sender`'a gore DOGRU sekilde kapsamlı), `ERC1967Utils.getImplementation()` (SU ANKI implementasyon -- eski bir imzanin FARKLI bir 'su anki durum'a karsi tekrar kullanilmasini engelliyor), `newImplementation`, `callData` hash'i, `validator`, ve `expiry` icinde TUTARLI sekilde birlestiriyor. `signer != address(this)` kontrolu, EIP-7702 delegatecall semantiginde `address(this)`'in CAGIRAN EOA'nin kendisi olmasi nedeniyle GECERLI bir caprazEOA-tekrar-oynatma korumasi sagliyor (ECDSA imzalari kriptografik olarak imzalayanin OZEL anahtarina bagli, bu nedenle EOA_A'nin imzasi asla EOA_B icin gecerli olamaz).
+* `NonceTracker.useNonce()`'un HERHANGI bir erisim kontrolu OLMAMASI (herkesce cagrilabilir) bilerek incelendi -- ancak bu bir acik DEGIL: nonce `msg.sender`'a gore anahtarlaniyor, ve bir saldirganin bir KURBANIN nonce'unu 'yakmasi' icin kurbanin adresinden `msg.sender` olarak cagri yapmasi GEREKIR, bu da imkansiz (Ethereum'un cagiran-kimligi taklit edilemez). Ayrica, gecersiz bir imzayla `setImplementation()`'a yapilan basarisiz bir cagri, islemin TAMAMEN geri alinmasi (nonce artisi DAHIL) nedeniyle nonce'u 'yakamaz'.
+* `CoinbaseSmartWalletValidator.validateAccountState()`: implementasyonun BEKLENEN, SABIT bir implementasyona esit olmasini VE hesabin en az bir sahibinin kayitli olmasini (`nextOwnerIndex() != 0`) zorunlu kiliyor -- bu, 'yukseltme sirasinda yanlis/bos init callData gonderilmesi' sinifindaki KLASIK bir HESAP-KILITLENMESI hatasini onceden engelliyor. Dogrulama, `upgradeToAndCall` SONRASINDA calistigindan ve basarisizlik TUM islemi geri aldigindan, kismi/bozuk bir yukseltme durumunda hesap ASLA kalamiyor (atomik, guvenli).
+* ONEMLI TASARIM GOZLEMI (bulgu DEGIL, bilincli ve ACIKCA belgelenmis): `isValidSignature()`'in EOA-ecrecover 'fallback'i, orijinal EOA ozel anahtarindan gelen HAM bir ECDSA imzasinin, akilli cuzdan implementasyonunun KENDI `isValidSignature` mantigi (orn. sahip listesinden CIKARILMIS olsa bile) NE DERSE DESIN, HER ZAMAN ERC-1271 olarak gecerli sayilmasini saglıyor. Bu, fonksiyonun KENDI yorumunda ACIKCA gerekcelendirilmis ('This ensures EOA signatures are considered valid regardless of the implementation's isValidSignature implementation') -- muhtemelen bir kurtarma/geri-donus guvenlik agi olarak KASITLI. Kullanicilar, orijinal EOA anahtarini 'kaldirdiklarinda' bu anahtarin ERC-1271 imzalama yetkisinin TAMAMEN iptal edildigini DUSUNMEMELI -- bu, YENI bir acik degil, dokumante edilmis bir davranis, ancak entegratorler/kullanicilar icin onemli bir anlayis noktasi oldugu icin not ediliyor.
+* SONUC: Kucuk ama SON DERECE kritik bu proxy'de (satir-satir TAM kod incelemesi, son commit'lerde mantik degisikligi YOK) PASS veya hint-tier seviyesinde raporlanabilir bir guvenlik acigi TESPIT EDILEMEDI. Temiz rapor (findings=[]) teslim ediliyor.
+
+## 📊 1. HIZLI TRİYAJ KARARI
+* **Durum:** `[⚪ TEMİZ - GEÇ]`
+* **Not:** Stage 1, 0 aday bulgu üretti; bunlardan hiçbiri Stage 2'nin ≥0 confidence eşiğini geçemedi.
+
+---
+_Bu rapor `scripts/bugbounty/dispatch.py` tarafından otomatik üretildi. Hiçbir bulgu GitHub Private Vulnerability Reporting API'sine veya HackerOne API'sine otomatik olarak gönderilmedi — gönderim her zaman insan onayı ve elle yapıştırma gerektirir._
